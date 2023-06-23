@@ -38,45 +38,15 @@ jobs:
           name: Build worker after test success
           command: docker build -t wfliu66/multi-worker ./worker
 
-  deploy:
-    executor: python
-    steps:
-      - checkout
       - run:
-          name: Install AWS CLI
-          command: sudo pip install awscli
+          name: log into dockerhub
+          command: echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+      
       - run:
-          name: Package application
+          name: push images to dockerhub
           command: |
-            zip -r application.zip .
-      - run:
-          name: Upload to S3
-          command: |
-            aws configure set aws_access_key_id $AWS_ACCESS_KEY
-            aws configure set aws_secret_access_key $AWS_SECRET_KEY
-            aws configure set default.region ap-southeast-1
-            aws configure set default.output json
-            aws s3 cp application.zip s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/application.zip
-      - run:
-          name: Create application version
-          command: |
-            aws elasticbeanstalk create-application-version --application-name test1 --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/application.zip"
-      - run:
-          name: Update environment
-          command: |
-            aws elasticbeanstalk update-environment --environment-name Test1-env --version-label $CIRCLE_SHA1
+            docker push wfliu66/multi-client
+            docker push wfliu66/multi-nginx
+            docker push wfliu66/multi-server
+            docker push wfliu66/multi-worker
 
-workflows:
-  version: 2
-  build-deploy:
-    jobs:
-      - build:
-          filters:
-            branches:
-              only: master
-      - deploy:
-          requires:
-            - build
-          filters:
-            branches:
-              only: masterr
