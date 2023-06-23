@@ -1,0 +1,82 @@
+version: 2.1
+executors:
+  default:
+    docker:
+      - image: circleci/node:14-browsers
+  python:
+    docker:
+      - image: circleci/python:3.7
+
+jobs:
+  build:
+    executor: default
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 20.10.7
+          docker_layer_caching: true
+      - run:
+          name: Build Docker Client Image
+          command: docker build -t wfliu66/react-test -f ./client/Dockerfile.dev ./client
+      - run:
+          name: Run tests
+          command: docker run -e CI=true wfliu66/react-test npm run test
+
+      - run:
+          name: Build client image after test success
+          command: docker build -t wfliu66/multi-client ./client
+      
+      - run:
+          name: Build nginx after test success
+          command: docker build -t wfliu66/multi-nginx ./nginx
+
+      - run:
+          name: Build server after test success
+          command: docker build -t wfliu66/multi-server ./server
+
+      - run:
+          name: Build worker after test success
+          command: docker build -t wfliu66/multi-worker ./worker
+
+  deploy:
+    executor: python
+    steps:
+      - checkout
+      - run:
+          name: Install AWS CLI
+          command: sudo pip install awscli
+      - run:
+          name: Package application
+          command: |
+            zip -r application.zip .
+      - run:
+          name: Upload to S3
+          command: |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
+            aws configure set default.region ap-southeast-1
+            aws configure set default.output json
+            aws s3 cp application.zip s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/application.zip
+      - run:
+          name: Create application version
+          command: |
+            aws elasticbeanstalk create-application-version --application-name test1 --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/application.zip"
+      - run:
+          name: Update environment
+          command: |
+            aws elasticbeanstalk update-environment --environment-name Test1-env --version-label $CIRCLE_SHA1
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - build:
+          filters:
+            branches:
+              only: master
+      - deploy:
+          requires:
+            - build
+          filters:
+            branches:
+              only: masterr
