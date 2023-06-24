@@ -65,11 +65,11 @@ jobs:
             aws configure set aws_secret_access_key $AWS_SECRET_KEY
             aws configure set default.region ap-southeast-1
             aws configure set default.output json
-            aws s3 cp Dockerrun.aws.json s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/Dockerrun.aws.json
+            aws s3 cp docker-compose.yml s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/docker-compose.yml
       - run:
           name: Create application version
           command: |
-            aws elasticbeanstalk create-application-version --application-name multi-docker --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/Dockerrun.aws.json"
+            aws elasticbeanstalk create-application-version --application-name multi-docker --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/docker-compose.yml"
       - run:
           name: Update environment
           command: |
