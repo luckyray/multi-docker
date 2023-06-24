@@ -5,7 +5,7 @@ services:
     hostname: client
     mem_limit: 128m
 
-  server:
+  api:
     image: wfliu66/multi-server
     hostname: api
     mem_limit: 128m
